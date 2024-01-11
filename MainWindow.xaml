@@ -1,0 +1,156 @@
+﻿<Window x:Class="NoiseGenerator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:NoiseGenerator"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        
+        
+         <!-- main split -->
+        <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <Border VerticalAlignment="Bottom" Grid.Row="0" BorderThickness="3" BorderBrush="DarkSlateGray"  ></Border>
+        
+        <!-- upper part split for photos-->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="100*"/>
+                    
+                </Grid.RowDefinitions>
+
+                <Image Grid.Row="0" x:Name="sourceImageControl" Width="600" Height="450" />
+                
+
+            </Grid>
+
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="100*"/>
+                   
+                </Grid.RowDefinitions>
+
+                <Image Grid.Row="0" x:Name="destinationImageControl" Width="600" Height="450" Visibility="Collapsed" />
+                
+
+
+            </Grid>
+
+
+            <Border  Grid.Column="1" BorderThickness="3" BorderBrush="DarkSlateGray"></Border>
+            
+        </Grid>
+
+        <!-- lower part split for logic-->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <!-- bottomLeft-->
+            <Grid Grid.Column="0" Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="20"/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0">Wybierz rodzaj szumu</TextBlock>
+                <RadioButton x:Name="radioNoise1" Margin="20,20,0,0" Grid.Row="1">pierwsza</RadioButton>
+                <RadioButton x:Name="radioNoise2" Margin="20,20,0,0" Grid.Row="2">druga</RadioButton>
+                <RadioButton x:Name="radioNoise3" Margin="20,20,0,0" Grid.Row="3">trzecia</RadioButton>
+            </Grid>
+            <!-- bottomCenter-->
+            <Grid Grid.Column="1" Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="20"/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Grid.Row="0">Wybierz Bibliotekę</TextBlock>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <RadioButton x:Name="radioCSharp" Margin="20,20,0,0" Grid.Column="0">C#</RadioButton>
+                    <RadioButton x:Name="radioAsm" Margin="20,20,0,0" Grid.Column="1">ASM</RadioButton>
+
+
+
+
+
+                </Grid>
+
+                <Grid Grid.Row="2">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="20"/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0">Wybierz ilość Wątków</TextBlock>
+                    <Slider Grid.Row="1" x:Name="threadsSlider" Minimum="1" Maximum="64"
+                    TickFrequency="2" IsSnapToTickEnabled="True" Value="1"
+                    ValueChanged="threadsSlider_ValueChanged"
+                    ToolTip="{Binding Value, ElementName=threadsSlider, StringFormat='Threads: {0:N0}'}" />
+
+                    <TextBlock x:Name="executionTimeTextBlock" Grid.Row="2" Text="{Binding ElementName=threadsSlider, Path=Value, StringFormat='Liczba wątków: {0:N0}'}" />
+
+                </Grid>
+
+                <Grid Grid.Row="3">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="20"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0">Wybierz plik JPG</TextBlock>
+                        <Button Click="ChooseImageButton_Click" Margin="60,0,60,0" Grid.Row="1" >Wybierz plik</Button>
+                    
+      
+                </Grid>
+                
+            </Grid>
+            <!-- bottomRight-->
+            <Grid Grid.Column="2" Margin="10">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <TextBlock>Czas wykonania:</TextBlock>
+                    
+                </Grid>
+
+                <Grid Grid.Row="1">
+                        <Button Click="ShowInAnotherPlaceButton_Click" Margin="60,60,60,0" Grid.Row="1" >Generuj</Button>
+
+                </Grid>
+
+            </Grid>
+        </Grid>
+            
+
+
+
+
+    </Grid>
+</Window>
