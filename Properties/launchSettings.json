@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "NoiseGenerator": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

@@ -16,7 +16,8 @@ using System.Windows.Shapes;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
-
+using System.Runtime.Intrinsics;
+using CSLibrary;
 namespace NoiseGenerator
 {
     /// <summary>
@@ -29,24 +30,32 @@ namespace NoiseGenerator
         static extern int generate_num();
 
         [DllImport(@"C:\Users\szorsz\source\repos\NoiseGenerator\x64\Debug\JAAsm.dll")]
-        static extern void clamp_color_value(ref int colorComponent);
+        static extern int clamp_color_value_below(ref int colorComponent);
 
         [DllImport(@"C:\Users\szorsz\source\repos\NoiseGenerator\x64\Debug\JAAsm.dll")]
-        public static extern void generate_noise_values(byte[] noiseValues, int noisePixels);
+        static extern int add_noise_asm(int[] pixelData, int pixelDataLength, int noisePixelIndex, int noiseColor);
 
         [DllImport(@"C:\Users\szorsz\source\repos\NoiseGenerator\x64\Debug\JAAsm.dll")]
-        public static extern void generate_noise_pixels(IntPtr pixelArray, IntPtr noiseArray, int pixelCount);
+        private static extern int generate_random_index(int arrayLength);
+
+        [DllImport(@"C:\Users\szorsz\source\repos\NoiseGenerator\x64\Debug\JAAsm.dll")]
+        private static extern void add_noise_to_pixel(int[] pixelData, int pixelIndex, int noiseValue);
+
+        
 
         private int NumberOfThreads { get; set; } = 1; // Wartość domyślna
 
         public MainWindow()
         {
             InitializeComponent();
+            int processorThreadCount = Environment.ProcessorCount;
+            threadsSlider.Value = processorThreadCount;
             threadsSlider.ValueChanged += threadsSlider_ValueChanged;
         }
 
         private void threadsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+
             NumberOfThreads = (int)e.NewValue; // Aktualizacja liczby wątków na podstawie suwaka
         }
 
@@ -117,7 +126,7 @@ namespace NoiseGenerator
         private void AddNoise1()
         {
             Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
+           
 
             WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
             int width = writeableBitmap.PixelWidth;
@@ -127,6 +136,59 @@ namespace NoiseGenerator
 
             // Rozpoczęcie zadania w wielu wątkach
             ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = NumberOfThreads };
+            Parallel.For(0, pixelData.Length, parallelOptions, i =>
+            {
+
+
+                Random rand = new Random();
+
+                //Class1 klasa1 = new Class1();
+                // int x = 0;
+                //x = klasa1.randTest(x);
+
+                int noise = rand.Next(-25, 25); // Szum w zakresie -25 do 25
+                int a = (pixelData[i] >> 24) & 0xff;
+                int r = ((pixelData[i] >> 16) & 0xff) + noise;
+                int g = ((pixelData[i] >> 8) & 0xff) + noise;
+                int b = (pixelData[i] & 0xff) + noise;
+                stopwatch.Start();
+                r = Math.Max(0, Math.Min(255, r));
+                g = Math.Max(0, Math.Min(255, g));
+                b = Math.Max(0, Math.Min(255, b));
+                stopwatch.Stop();
+                pixelData[i] = (a << 24) | (r << 16) | (g << 8) | b;
+            });
+
+            // Zapisanie zmian w bitmapie
+            writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
+
+            // Aktualizacja UI po zakończeniu przetwarzania
+            this.Dispatcher.Invoke(() =>
+            {
+                destinationImageControl.Source = writeableBitmap;
+                destinationImageControl.Visibility = Visibility.Visible;
+
+               
+                TimeSpan timeTaken = stopwatch.Elapsed;
+                string elapsedTime = String.Format("{2:00}.{3:00}",
+                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds);
+                executionTimeTextBlock_Kopiuj.Text = "Czas wykonania AddNoise1: " + elapsedTime;
+            });
+        }
+        private void ASMNoise1()
+        {
+            WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
+            int width = writeableBitmap.PixelWidth;
+            int height = writeableBitmap.PixelHeight;
+            int[] pixelData = new int[width * height];
+            writeableBitmap.CopyPixels(pixelData, width * 4, 0);
+
+            // Rozpoczęcie zadania w wielu wątkach
+            ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = NumberOfThreads };
+
+            // Stopwatch poza pętlą
+            Stopwatch stopwatch = new Stopwatch();
+
             Parallel.For(0, pixelData.Length, parallelOptions, i =>
             {
                 Random rand = new Random();
@@ -136,78 +198,52 @@ namespace NoiseGenerator
                 int g = ((pixelData[i] >> 8) & 0xff) + noise;
                 int b = (pixelData[i] & 0xff) + noise;
 
-                r = Math.Max(0, Math.Min(255, r));
-                g = Math.Max(0, Math.Min(255, g));
-                b = Math.Max(0, Math.Min(255, b));
+                // Start pomiaru czasu
+                stopwatch.Start();
+
+                r = clamp_color_value_below(ref r);
+                g = clamp_color_value_below(ref g);
+                b = clamp_color_value_below(ref b);
+
+                // Koniec pomiaru czasu
+                stopwatch.Stop();
 
                 pixelData[i] = (a << 24) | (r << 16) | (g << 8) | b;
             });
 
-            // Zapisanie zmian w bitmapie
-            writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
+            // Wyniki czasowe
+            TimeSpan timeTaken = stopwatch.Elapsed;
+            string elapsedTime = String.Format("{2:00}.{3:00}",
+                timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds);
+            executionTimeTextBlock_Kopiuj.Text = "Czas wykonania AsmNoise1: " + elapsedTime;
+        
+
+
+        // Zapisanie zmian w bitmapie
+        writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
 
             // Aktualizacja UI po zakończeniu przetwarzania
             this.Dispatcher.Invoke(() =>
             {
+                int d = 300;
+                int e = -300;
+                d = clamp_color_value_below(ref d);
+                e = clamp_color_value_below(ref e);
+                int s = 100;
+                s = clamp_color_value_below(ref s);
                 destinationImageControl.Source = writeableBitmap;
                 destinationImageControl.Visibility = Visibility.Visible;
 
-                stopwatch.Stop();
-                TimeSpan timeTaken = stopwatch.Elapsed;
-                string elapsedTime = String.Format("{2:00}.{3:00}",
-                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds / 10);
-                executionTimeTextBlock.Text = "Czas wykonania AddNoise1: " + elapsedTime;
-            });
-        }
-        private void ASMNoise1()
-        {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
+               
 
-            WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
-            int width = writeableBitmap.PixelWidth;
-            int height = writeableBitmap.PixelHeight;
-            int[] pixelData = new int[width * height];
-            writeableBitmap.CopyPixels(pixelData, width * 4, 0);
 
-            // Rozpoczęcie zadania w wielu wątkach
-            ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = NumberOfThreads };
-            Parallel.For(0, pixelData.Length, parallelOptions, i =>
-            {
-                // Random rand = generate_noise();
-                int noise = generate_num(); // Szum w zakresie -25 do 25
-                int a = (pixelData[i] >> 24) & 0xff;
-                int r = ((pixelData[i] >> 16) & 0xff) + noise;
-                int g = ((pixelData[i] >> 8) & 0xff) + noise;
-                int b = (pixelData[i] & 0xff) + noise;
 
-                clamp_color_value(ref r);
-                clamp_color_value(ref g);
-                clamp_color_value(ref b);
-
-                pixelData[i] = (a << 24) | (r << 16) | (g << 8) | b;
-            });
-
-            // Zapisanie zmian w bitmapie
-            writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
-
-            // Aktualizacja UI po zakończeniu przetwarzania
-            this.Dispatcher.Invoke(() =>
-            {
-                destinationImageControl.Source = writeableBitmap;
-                destinationImageControl.Visibility = Visibility.Visible;
-
-                stopwatch.Stop();
-                TimeSpan timeTaken = stopwatch.Elapsed;
-                string elapsedTime = String.Format("{2:00}.{3:00}",
-                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds / 10);
-                executionTimeTextBlock.Text = "Czas wykonania AddNoise1: " + elapsedTime;
             });
         }
 
         private void AddNoise2()
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
+            Stopwatch stopwatch = new Stopwatch();
 
             WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
             int width = writeableBitmap.PixelWidth;
@@ -215,15 +251,17 @@ namespace NoiseGenerator
             int[] pixelData = new int[width * height];
             writeableBitmap.CopyPixels(pixelData, width * 4, 0);
 
-            int noisePixels = (int)(pixelData.Length * 0.05); // Zakładamy, że chcemy zmienić 5% pikseli
+            int noisePixels = (int)(pixelData.Length * 0.2); // Zakładamy, że chcemy zmienić 5% pikseli
             ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = NumberOfThreads };
 
             Parallel.For(0, noisePixels, parallelOptions, (i, state) =>
             {
+                stopwatch.Start();
                 Random rand = new Random((int)DateTime.Now.Ticks & (0x0000FFFF + i));
                 int randomPixelIndex = rand.Next(pixelData.Length);
                 int noiseColor = rand.NextDouble() < 0.5 ? -16777216 : -1; // Czarny albo biały w ARGB
                 pixelData[randomPixelIndex] = noiseColor;
+                stopwatch.Stop();
             });
 
             writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
@@ -234,17 +272,18 @@ namespace NoiseGenerator
                 destinationImageControl.Source = writeableBitmap;
                 destinationImageControl.Visibility = Visibility.Visible;
 
-                stopwatch.Stop();
+                
                 TimeSpan timeTaken = stopwatch.Elapsed;
                 string elapsedTime = String.Format("{2:00}.{3:00}",
-                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds / 10);
-                executionTimeTextBlock.Text = "Czas wykonania AddNoise1: " + elapsedTime;
+                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds);
+                executionTimeTextBlock_Kopiuj.Text = "Czas wykonania AddNoise2: " + elapsedTime;
             });
         }
 
         private void ASMNoise2()
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            Stopwatch stopwatch = new Stopwatch();
 
             WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
             int width = writeableBitmap.PixelWidth;
@@ -252,18 +291,17 @@ namespace NoiseGenerator
             int[] pixelData = new int[width * height];
             writeableBitmap.CopyPixels(pixelData, width * 4, 0);
 
-            int noisePixels = (int)(pixelData.Length * 0.05); // Zakładamy, że chcemy zmienić 5% pikseli
+            int noisePixels = (int)(pixelData.Length * 0.04); // Zakładamy, że chcemy zmienić 5% pikseli
             ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = NumberOfThreads };
-
-            byte[] noiseValues = new byte[noisePixels];
-            generate_noise_values(noiseValues, noisePixels); // Generowanie szumu w ASM
 
             Parallel.For(0, noisePixels, parallelOptions, (i, state) =>
             {
+                stopwatch.Start();
                 Random rand = new Random((int)DateTime.Now.Ticks & (0x0000FFFF + i));
-                int randomPixelIndex = rand.Next(pixelData.Length);
-                int noiseColor = noiseValues[i] < 128 ? -16777216 : -1; // Czarny albo biały w ARGB
-                pixelData[randomPixelIndex] = noiseColor;
+                int randomPixelIndex = generate_random_index(pixelData.Length);
+                int noiseColor = rand.NextDouble() < 0.5 ? -16777216 : -1; // Czarny albo biały w ARGB
+                add_noise_asm(pixelData, pixelData.Length, randomPixelIndex, noiseColor);
+                stopwatch.Stop();   
             });
 
             writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
@@ -274,13 +312,14 @@ namespace NoiseGenerator
                 destinationImageControl.Source = writeableBitmap;
                 destinationImageControl.Visibility = Visibility.Visible;
 
-                stopwatch.Stop();
+                
                 TimeSpan timeTaken = stopwatch.Elapsed;
                 string elapsedTime = String.Format("{2:00}.{3:00}",
-                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds / 10);
-                executionTimeTextBlock.Text = "Czas wykonania ASMNoise2: " + elapsedTime;
+                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds);
+                executionTimeTextBlock_Kopiuj.Text = "Czas wykonania AsmNoise2: " + elapsedTime;
             });
         }
+
 
 
 
@@ -289,7 +328,7 @@ namespace NoiseGenerator
 
         private void AddNoise3()
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
+            Stopwatch stopwatch = new Stopwatch(); ;
 
             WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
             int width = writeableBitmap.PixelWidth;
@@ -301,87 +340,98 @@ namespace NoiseGenerator
 
             Parallel.For(0, pixelData.Length, parallelOptions, i =>
             {
-                double noise = (Math.Sin(2 * Math.PI * i / 500) + 1) / 2; // Przykład z użyciem funkcji sinus
-                noise *= 255; // skalujemy do zakresu kolorów
+                Random random = new Random();
+                double offset = random.NextDouble(); 
 
-                int a = (pixelData[i] >> 24) & 0xff;
-                int r = ((pixelData[i] >> 16) & 0xff) + (int)noise;
-                int g = ((pixelData[i] >> 8) & 0xff) + (int)noise;
-                int b = (pixelData[i] & 0xff) + (int)noise;
+                double noise = (Math.Sin(2 * Math.PI * i / (width * 10) + offset) + 1) / 2;
+                noise *= 255;
+                int noiseValue = (int)noise;
 
-                r = Math.Max(0, Math.Min(255, r));
-                g = Math.Max(0, Math.Min(255, g));
-                b = Math.Max(0, Math.Min(255, b));
+                stopwatch.Start();
 
-                pixelData[i] = (a << 24) | (r << 16) | (g << 8) | b;
+                pixelData[i] = Class1.AddNoiseToPixel(pixelData[i], noiseValue);
+                
+                stopwatch.Stop();
             });
 
             writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // Update UI
                 destinationImageControl.Source = writeableBitmap;
                 destinationImageControl.Visibility = Visibility.Visible;
 
-                stopwatch.Stop();
+                
                 TimeSpan timeTaken = stopwatch.Elapsed;
                 string elapsedTime = String.Format("{2:00}.{3:00}",
-                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds / 10);
-                executionTimeTextBlock.Text = "Czas wykonania AddNoise1: " + elapsedTime;
+                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds);
+                executionTimeTextBlock_Kopiuj.Text = "Czas wykonania AddNoise3: " + elapsedTime;
             });
         }
+
+
 
         private void ASMNoise3()
         {
             Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
 
-            // Załaduj obraz i przygotuj dane pikseli
             WriteableBitmap writeableBitmap = new WriteableBitmap(savedBitmapImage);
             int width = writeableBitmap.PixelWidth;
             int height = writeableBitmap.PixelHeight;
             int[] pixelData = new int[width * height];
             writeableBitmap.CopyPixels(pixelData, width * 4, 0);
 
-           
-            int[] noiseData = new int[pixelData.Length];
-            for (int i = 0; i < pixelData.Length; i++)
+            ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = NumberOfThreads };
+
+            Parallel.For(0, pixelData.Length, parallelOptions, i =>
             {
-                double noiseValue = (Math.Sin(2 * Math.PI * i / 500) + 1) / 2; // Generowanie szumu
-                noiseData[i] = (int)(noiseValue * 255); // Przeskalowanie szumu do zakresu 0-255
-            }
+                
+                Random random = new Random();
+                double offset = random.NextDouble();
 
-            // Konwersja tablicy pikseli i szumu do wskaźników
-            GCHandle pixelHandle = GCHandle.Alloc(pixelData, GCHandleType.Pinned);
-            GCHandle noiseHandle = GCHandle.Alloc(noiseData, GCHandleType.Pinned);
+                double noise = (Math.Sin(2 * Math.PI * i / (width * 10) + offset) + 1) / 2;
+                noise *= 255;
+                int noiseValue = (int)noise;
 
-            // Wywołanie funkcji asemblerowej
-            generate_noise_pixels(pixelHandle.AddrOfPinnedObject(), noiseHandle.AddrOfPinnedObject(), pixelData.Length);
+                stopwatch.Start();
+                add_noise_to_pixel(pixelData, noiseValue, i);
+                stopwatch.Stop();
+            });
 
-            stopwatch.Stop();
-
-            // Zapisanie zmodyfikowanych pikseli z powrotem do bitmapy
             writeableBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixelData, width * 4, 0);
 
-            // Oczyszczenie uchwytów
-            pixelHandle.Free();
-            noiseHandle.Free();
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                destinationImageControl.Source = writeableBitmap;
+                destinationImageControl.Visibility = Visibility.Visible;
 
-            // Aktualizacja UI
-            destinationImageControl.Source = writeableBitmap;
-
-            // Wyświetlanie czasu wykonania
-            
-            TimeSpan timeTaken = stopwatch.Elapsed;
-            string elapsedTime = String.Format("{2:00}.{3:00}",
-                timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds / 10);
-            executionTimeTextBlock.Text = "Czas wykonania AddNoise1: " + elapsedTime;
+                TimeSpan timeTaken = stopwatch.Elapsed;
+                string elapsedTime = String.Format("{2:00}.{3:00}",
+                    timeTaken.Hours, timeTaken.Minutes, timeTaken.Seconds, timeTaken.Milliseconds);
+                executionTimeTextBlock_Kopiuj.Text = "Czas wykonania AsmNoise3: " + elapsedTime;
+            });
         }
+
+
+
+
+
+
+
     }
 
 
 
 
+
+
+
+
+
+
 }
+
+
+
+
 

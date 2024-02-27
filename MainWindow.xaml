@@ -7,16 +7,16 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        
-        
-         <!-- main split -->
+
+
+        <!-- main split -->
         <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
 
         <Border VerticalAlignment="Bottom" Grid.Row="0" BorderThickness="3" BorderBrush="DarkSlateGray"  ></Border>
-        
+
         <!-- upper part split for photos-->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
@@ -27,29 +27,29 @@
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="100*"/>
-                    
+
                 </Grid.RowDefinitions>
 
                 <Image Grid.Row="0" x:Name="sourceImageControl" Width="600" Height="450" />
-                
+
 
             </Grid>
 
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="100*"/>
-                   
+
                 </Grid.RowDefinitions>
 
                 <Image Grid.Row="0" x:Name="destinationImageControl" Width="600" Height="450" Visibility="Collapsed" />
-                
+
 
 
             </Grid>
 
 
             <Border  Grid.Column="1" BorderThickness="3" BorderBrush="DarkSlateGray"></Border>
-            
+
         </Grid>
 
         <!-- lower part split for logic-->
@@ -81,7 +81,7 @@
                     <RowDefinition/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
-                
+
                 <TextBlock Grid.Row="0">Wybierz Bibliotekę</TextBlock>
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
@@ -104,13 +104,15 @@
                         <RowDefinition/>
                         <RowDefinition/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0">Wybierz ilość Wątków</TextBlock>
-                    <Slider Grid.Row="1" x:Name="threadsSlider" Minimum="1" Maximum="64"
-                    TickFrequency="2" IsSnapToTickEnabled="True" Value="1"
+                    <TextBlock Grid.Row="0" Margin="0,-13,0,13">Wybierz ilość Wątków</TextBlock>
+                    <Slider x:Name="threadsSlider" Minimum="2" Maximum="64"
+                    TickFrequency="2" IsSnapToTickEnabled="True" Value="2"
+                            
                     ValueChanged="threadsSlider_ValueChanged"
-                    ToolTip="{Binding Value, ElementName=threadsSlider, StringFormat='Threads: {0:N0}'}" />
+                    ToolTip="{Binding Value, ElementName=threadsSlider, StringFormat='Threads: {0:N0}'}" Margin="0,7,0,13" Grid.RowSpan="2" />
 
-                    <TextBlock x:Name="executionTimeTextBlock" Grid.Row="2" Text="{Binding ElementName=threadsSlider, Path=Value, StringFormat='Liczba wątków: {0:N0}'}" />
+                    <TextBlock x:Name="executionTimeTextBlock" Grid.Row="1" Text="{Binding ElementName=threadsSlider, Path=Value, StringFormat='Liczba wątków: {0:N0}'}" Margin="0,7,0,13" Grid.RowSpan="2" />
+                    <TextBlock x:Name="executionTimeTextBlock_Kopiuj" Grid.Row="2" Text="{Binding Value,  StringFormat=Czas Wykonania: \{0:N0\}}" Margin="0,6,0,-7" />
 
                 </Grid>
 
@@ -121,11 +123,11 @@
                         <RowDefinition/>
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0">Wybierz plik JPG</TextBlock>
-                        <Button Click="ChooseImageButton_Click" Margin="60,0,60,0" Grid.Row="1" >Wybierz plik</Button>
-                    
-      
+                    <Button Click="ChooseImageButton_Click" Margin="60,0,60,0" Grid.Row="1" >Wybierz plik</Button>
+
+
                 </Grid>
-                
+
             </Grid>
             <!-- bottomRight-->
             <Grid Grid.Column="2" Margin="10">
@@ -137,17 +139,17 @@
 
                 <Grid Grid.Row="0">
                     <TextBlock>Czas wykonania:</TextBlock>
-                    
+
                 </Grid>
 
                 <Grid Grid.Row="1">
-                        <Button Click="ShowInAnotherPlaceButton_Click" Margin="60,60,60,0" Grid.Row="1" >Generuj</Button>
+                    <Button Click="ShowInAnotherPlaceButton_Click" Margin="60,60,60,0" Grid.Row="1" >Generuj</Button>
 
                 </Grid>
 
             </Grid>
         </Grid>
-            
+
 
 
 
