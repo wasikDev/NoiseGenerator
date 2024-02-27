@@ -1,0 +1,8 @@
+LIBRARY JAAsm
+
+EXPORTS clamp_color_value_below
+
+EXPORTS add_noise_asm
+EXPORTS generate_random_index
+EXPORTS add_noise_to_pixel
+
